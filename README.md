@@ -35,10 +35,16 @@ system's own **Ctrl + ← / Ctrl + →** shortcut, which macOS uses to move betw
 
 ## Install
 
+> **No prebuilt download.** The app isn't notarized by Apple, so a downloaded `.app` would be blocked by
+> Gatekeeper. You need to build and archive it yourself — it takes a couple of minutes.
+
 1. Clone the repo and open `mac-space-switcher.xcodeproj` in Xcode.
-2. Select the `mac-space-switcher` target → **Signing & Capabilities** and choose your Team
-   (a free Apple ID "Personal Team" is enough). Make sure **App Sandbox** is *not* enabled.
-3. **Product → Archive → Distribute App → Copy App** (or just ⌘R), then move the app to `/Applications`.
+2. Select the `mac-space-switcher` target → **Signing & Capabilities**, and choose your own Team
+   (a free Apple ID "Personal Team" is enough). Change the Bundle Identifier if Xcode says it's taken.
+   Make sure **App Sandbox** is *not* enabled.
+3. **Product → Archive**, then in the Organizer choose **Distribute App → Custom → Copy App**
+   and save the app.
+4. Move the resulting `mac-space-switcher.app` to `/Applications` and launch it from there.
 
 ## Setup (required, once)
 

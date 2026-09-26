@@ -17,6 +17,7 @@ put the pointer over the clock in the top-right corner of the screen and scroll.
 - Scroll **up** → previous Space (left)
 - Scroll **down** → next Space (right)
 - Works on every connected display (top-right corner of each one)
+- Optional **Start at Login** toggle in the menu bar menu
 - Lives in the menu bar only — no Dock icon, no window
 - No private APIs, no SIP changes
 

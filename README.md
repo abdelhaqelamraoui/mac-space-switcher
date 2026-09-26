@@ -1,25 +1,35 @@
-<p align="center">
-  <img src="docs/logo.png" width="128" alt="Mac Space Switcher logo">
-</p>
+<div align="center">
 
-<h1 align="center">Mac Space Switcher</h1>
+<img src="docs/logo.png" width="160" alt="Mac Space Switcher logo">
 
-<p align="center">
-  Switch macOS Spaces with your <b>mouse wheel</b> — just scroll over the clock in the menu bar.
-</p>
+# Mac Space Switcher
+
+**Switch macOS Spaces with your mouse wheel.**<br>
+Just scroll over the clock in the menu bar.
+
+![Platform](https://img.shields.io/badge/platform-macOS%2026.1%2B-1d1d1f?logo=apple&logoColor=white)
+![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)
+![Sandbox](https://img.shields.io/badge/private%20APIs-none-6b46e6)
+
+[Install](#install) · [Setup](#setup-required-once) · [Configuration](#configuration) · [Troubleshooting](#troubleshooting)
+
+</div>
 
 ---
 
 Trackpad users can swipe between Spaces (desktops). With a regular mouse there is no easy equivalent.
-**Mac Space Switcher** is a tiny menu bar app that turns the mouse wheel into a Space switcher:
-put the pointer over the clock in the top-right corner of the screen and scroll.
+**Mac Space Switcher** is a tiny menu bar app that turns the wheel into a Space switcher: put the pointer
+over the clock in the top-right corner and scroll.
 
-- Scroll **up** → previous Space (left)
-- Scroll **down** → next Space (right)
-- Works on every connected display (top-right corner of each one)
-- Optional **Start at Login** toggle in the menu bar menu
-- Lives in the menu bar only — no Dock icon, no window
-- No private APIs, no SIP changes
+## Features
+
+| | |
+|---|---|
+| 🖱️ **Scroll to switch** | Wheel up → previous Space, wheel down → next Space |
+| 🖥️ **Multi-display** | Works on the top-right corner of every connected display |
+| 🫥 **Stays out of the way** | Menu bar icon only — no Dock icon, no window |
+| 🚀 **Start at Login** | Optional toggle in the menu bar menu |
+| 🔒 **No hacks** | No private APIs, no SIP changes — it uses the system's own shortcuts |
 
 ## How it works
 
@@ -78,6 +88,8 @@ Tweak the constants at the top of `mac-space-switcher/SpaceSwitcher.swift`:
   Sign with a real team in Xcode.
 - **Spaces don't change but scrolling is captured** — the Mission Control shortcuts are disabled.
 - **Won't work in the App Sandbox / Mac App Store** — global event taps are not allowed in the sandbox.
+
+---
 
 ## License
 

@@ -13,6 +13,8 @@ final class SpaceSwitcher {
 
     static let shared = SpaceSwitcher()
 
+    var isEnabled = true
+
     // Hot zone: the right-most `zoneWidth` points of the menu bar on any display.
     private let zoneWidth: CGFloat = 220
     private let zoneHeight: CGFloat = 40
@@ -90,7 +92,16 @@ final class SpaceSwitcher {
             if let tap = eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
             return Unmanaged.passUnretained(event)
         }
-        guard type == .scrollWheel, isInHotZone(event.location) else {
+        guard type == .scrollWheel else {
+            return Unmanaged.passUnretained(event)
+        }
+
+        guard isEnabled, isInHotZone(event.location) else {
+            // Not over the menu-bar clock (or Space switching is disabled); let the
+            // Dock switcher have a look.
+            if DockWindowSwitcher.shared.handle(event) {
+                return nil
+            }
             return Unmanaged.passUnretained(event)
         }
 

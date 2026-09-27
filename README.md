@@ -25,17 +25,27 @@ over the clock in the top-right corner and scroll.
 
 | | |
 |---|---|
-| 🖱️ **Scroll to switch** | Wheel up → previous Space, wheel down → next Space |
+| 🖱️ **Scroll to switch Spaces** | Wheel up → previous Space, wheel down → next Space, over the clock |
+| 🪟 **Scroll to switch windows** | Scroll over an app's Dock icon to cycle through its open windows |
 | 🖥️ **Multi-display** | Works on the top-right corner of every connected display |
 | 🫥 **Stays out of the way** | Menu bar icon only — no Dock icon, no window |
 | 🚀 **Start at Login** | Optional toggle in the menu bar menu |
-| 🔒 **No hacks** | No private APIs, no SIP changes — it uses the system's own shortcuts |
+| 🔒 **No hacks** | No private APIs, no SIP changes — it uses the system's own shortcuts and Accessibility API |
 
 ## How it works
 
-A global event tap watches scroll-wheel events. When the pointer is inside the hot zone
-(the right-most 220 pt of the menu bar), the scroll event is swallowed and the app posts the
-system's own **Ctrl + ← / Ctrl + →** shortcut, which macOS uses to move between Spaces.
+A global event tap watches scroll-wheel events.
+
+- When the pointer is inside the hot zone (the right-most 220 pt of the menu bar), the scroll
+  event is swallowed and the app posts the system's own **Ctrl + ← / Ctrl + →** shortcut, which
+  macOS uses to move between Spaces. Toggle this off from the menu bar menu
+  ("Switch Spaces on Menu Bar Scroll") if you don't want it.
+- When the pointer is over an app icon in the Dock, the scroll event is swallowed and the app
+  uses the Accessibility API to find that app's open windows and raise the next/previous one —
+  no window is closed or reordered, it's just brought to the front. Toggle this off from the menu
+  bar menu ("Switch Windows on Dock Scroll") if you don't want it.
+
+Both toggles are independent — you can leave one on and turn the other off — and both default to on.
 
 ## Requirements
 
@@ -69,15 +79,19 @@ Now scroll over the clock.
 
 ## Configuration
 
-Tweak the constants at the top of `mac-space-switcher/SpaceSwitcher.swift`:
+Tweak the constants at the top of `mac-space-switcher/SpaceSwitcher.swift` (Spaces) or
+`mac-space-switcher/DockWindowSwitcher.swift` (Dock windows) — both share the same shape:
 
 | Constant          | Default | Meaning                                          |
 | ----------------- | ------- | ------------------------------------------------ |
-| `zoneWidth`       | `220`   | Width (pt) of the hot zone from the right edge   |
-| `zoneHeight`      | `40`    | Height (pt) of the hot zone from the top edge    |
+| `zoneWidth`       | `220`   | Width (pt) of the hot zone from the right edge (Spaces only) |
+| `zoneHeight`      | `40`    | Height (pt) of the hot zone from the top edge (Spaces only) |
 | `scrollThreshold` | `3`     | Scroll amount needed for one switch              |
 | `cooldown`        | `0.35`  | Minimum seconds between switches                 |
 | `invertDirection` | `false` | Flip scroll direction                            |
+
+The "Switch Windows on Dock Scroll" toggle in the menu bar menu turns the Dock feature on/off
+without rebuilding.
 
 ## Troubleshooting
 

@@ -2,8 +2,28 @@ import Cocoa
 import ApplicationServices
 import CoreGraphics
 
-/// Scrolling the mouse wheel over the top-right corner of the menu bar (the clock)
-/// switches to the previous/next Space by posting Ctrl+Left / Ctrl+Right.
+/// Screen corner that acts as the scroll hot zone for switching Spaces.
+enum ScreenCorner: String, CaseIterable, Identifiable {
+    case topLeft, topRight, bottomLeft, bottomRight
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .topLeft: return "Top Left"
+        case .topRight: return "Top Right"
+        case .bottomLeft: return "Bottom Left"
+        case .bottomRight: return "Bottom Right"
+        }
+    }
+
+    var isTop: Bool { self == .topLeft || self == .topRight }
+    var isLeft: Bool { self == .topLeft || self == .bottomLeft }
+}
+
+/// Scrolling the mouse wheel over a screen corner (by default the top-right one,
+/// i.e. the menu bar clock) switches to the previous/next Space by posting Ctrl+Left / Ctrl+Right.
+/// Optionally, holding the right mouse button and scrolling anywhere does the same.
 ///
 /// Requirements:
 ///  - App Sandbox must be OFF (event taps / event posting are blocked in the sandbox).
@@ -14,8 +34,11 @@ final class SpaceSwitcher {
     static let shared = SpaceSwitcher()
 
     var isEnabled = true
+    var corner: ScreenCorner = .topRight
+    /// Hold the right mouse button and scroll anywhere to switch Spaces.
+    var rightButtonScrollEnabled = false
 
-    // Hot zone: the right-most `zoneWidth` points of the menu bar on any display.
+    // Hot zone: a `zoneWidth` x `zoneHeight` rectangle in the chosen corner of any display.
     private let zoneWidth: CGFloat = 220
     private let zoneHeight: CGFloat = 40
 
@@ -30,6 +53,14 @@ final class SpaceSwitcher {
     private var runLoopSource: CFRunLoopSource?
     private var accumulated: Double = 0
     private var lastSwitch = Date.distantPast
+
+    // Right-button gesture. The button press is held back until we know whether it is
+    // a gesture (scrolled -> no context menu) or a plain click (replayed on release).
+    private var rightHeld = false
+    private var rightGestureUsed = false
+    private var pendingRightDown: CGEvent?
+    private let dragSlop: CGFloat = 4            // movement that turns the press into a real right-drag
+    private static let replayTag: Int64 = 0x53505357 // marks events we re-post ourselves
 
     private init() {}
 
@@ -56,7 +87,8 @@ final class SpaceSwitcher {
             return
         }
 
-        let mask = CGEventMask(1 << CGEventType.scrollWheel.rawValue)
+        let types: [CGEventType] = [.scrollWheel, .rightMouseDown, .rightMouseUp, .rightMouseDragged]
+        let mask = types.reduce(CGEventMask(0)) { $0 | (1 << CGEventMask($1.rawValue)) }
 
         let callback: CGEventTapCallBack = { _, type, event, refcon in
             guard let refcon else { return Unmanaged.passUnretained(event) }
@@ -90,14 +122,25 @@ final class SpaceSwitcher {
         // The system disables taps that are slow or on user input; turn it back on.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap = eventTap { CGEvent.tapEnable(tap: tap, enable: true) }
+            // We may have missed the button release while the tap was off.
+            rightHeld = false
+            rightGestureUsed = false
+            pendingRightDown = nil
             return Unmanaged.passUnretained(event)
+        }
+        if type == .rightMouseDown || type == .rightMouseUp || type == .rightMouseDragged {
+            return handleRightButton(type: type, event: event)
         }
         guard type == .scrollWheel else {
             return Unmanaged.passUnretained(event)
         }
 
-        guard isEnabled, isInHotZone(event.location) else {
-            // Not over the menu-bar clock (or Space switching is disabled); let the
+        if rightHeld {
+            // Scrolling with the right button held: this press is a gesture, not a click.
+            rightGestureUsed = true
+            pendingRightDown = nil
+        } else if !(isEnabled && isInHotZone(event.location)) {
+            // Not over the hot corner (or Space switching is disabled); let the
             // Dock switcher have a look.
             if DockWindowSwitcher.shared.handle(event) {
                 return nil
@@ -129,6 +172,58 @@ final class SpaceSwitcher {
         return nil // swallow
     }
 
+    private func handleRightButton(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        // Our own replayed click: let it through untouched.
+        if event.getIntegerValueField(.eventSourceUserData) == Self.replayTag {
+            return Unmanaged.passUnretained(event)
+        }
+
+        switch type {
+        case .rightMouseDown:
+            guard rightButtonScrollEnabled else { break }
+            rightHeld = true
+            rightGestureUsed = false
+            pendingRightDown = event.copy()
+            accumulated = 0
+            return nil
+
+        case .rightMouseDragged:
+            guard rightHeld else { break }
+            if rightGestureUsed { return nil }
+            if let down = pendingRightDown {
+                let dx = event.location.x - down.location.x
+                let dy = event.location.y - down.location.y
+                if hypot(dx, dy) < dragSlop { return nil }
+                // A real right-drag: hand the press back and stop tracking it.
+                Self.replay(down)
+            }
+            rightHeld = false
+            pendingRightDown = nil
+
+        case .rightMouseUp:
+            guard rightHeld else { break }
+            let down = pendingRightDown
+            rightHeld = false
+            pendingRightDown = nil
+            if rightGestureUsed { return nil }
+            // Plain right-click: deliver the press we held back, then the release.
+            if let down, let up = event.copy() {
+                Self.replay(down)
+                Self.replay(up)
+                return nil
+            }
+
+        default:
+            break
+        }
+        return Unmanaged.passUnretained(event)
+    }
+
+    private static func replay(_ event: CGEvent) {
+        event.setIntegerValueField(.eventSourceUserData, value: replayTag)
+        event.post(tap: .cgSessionEventTap)
+    }
+
     /// `location` is in global display coordinates (origin top-left of the primary display).
     private func isInHotZone(_ point: CGPoint) -> Bool {
         var displayID = CGDirectDisplayID()
@@ -137,8 +232,13 @@ final class SpaceSwitcher {
             return false
         }
         let bounds = CGDisplayBounds(displayID)
-        return point.y >= bounds.minY && point.y <= bounds.minY + zoneHeight
-            && point.x >= bounds.maxX - zoneWidth && point.x <= bounds.maxX
+        let inX = corner.isLeft
+            ? point.x >= bounds.minX && point.x <= bounds.minX + zoneWidth
+            : point.x >= bounds.maxX - zoneWidth && point.x <= bounds.maxX
+        let inY = corner.isTop
+            ? point.y >= bounds.minY && point.y <= bounds.minY + zoneHeight
+            : point.y >= bounds.maxY - zoneHeight && point.y <= bounds.maxY
+        return inX && inY
     }
 
     // MARK: - Space switching
